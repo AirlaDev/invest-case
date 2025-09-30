@@ -1,15 +1,14 @@
-# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routes import auth, clients, assets, allocations, movements
 
-# Criar tabelas
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="InvestFlow API", version="1.0.0")
 
-# CORS
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -18,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rotas
+
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
 app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
