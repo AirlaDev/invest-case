@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15
@@ -16,8 +14,8 @@ services:
     build: ./backend
     depends_on:
       - db
-    environment:
-      DATABASE_URL: postgresql://invest:investpw@db:5432/investdb
+    environment:      
+      DATABASE_URL: postgresql+psycopg://invest:investpw@db:5432/investdb
       SECRET_KEY: junior-secret-key
     ports:
       - "8000:8000"

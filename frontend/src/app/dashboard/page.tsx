@@ -1,55 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { BarChart3, Users, TrendingUp, DollarSign, LogOut, Plus, Search, Download, Filter } from 'lucide-react'
+import { saveAs } from 'file-saver';
 
-// Todos os ícones como componentes SVG
-const Icons = {
-  BarChart3: () => (
-    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  ),
-  Users: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-    </svg>
-  ),
-  TrendingUp: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-    </svg>
-  ),
-  DollarSign: () => (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-    </svg>
-  ),
-  LogOut: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-  ),
-  Plus: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-    </svg>
-  ),
-  Search: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  ),
-  Download: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-  ),
-  Filter: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
-    </svg>
-  )
-}
 
 interface Client {
   id: number
@@ -65,6 +19,7 @@ export default function Dashboard() {
   const [newClientName, setNewClientName] = useState('')
   const [newClientEmail, setNewClientEmail] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [officeTotal, setOfficeTotal] = useState(0);
   const router = useRouter()
 
   useEffect(() => {
@@ -74,15 +29,25 @@ export default function Dashboard() {
       return
     }
     fetchClients()
+    fetchOfficeTotal();
   }, [router])
+  
+  const fetchOfficeTotal = async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:8000/api/movements/office_total', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) {
+        setOfficeTotal(await response.json());
+    }
+  };
+
 
   const fetchClients = async () => {
     try {
       const token = localStorage.getItem('token')
       const response = await fetch('http://localhost:8000/api/clients/', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
       
       if (response.ok) {
@@ -94,7 +59,8 @@ export default function Dashboard() {
     }
   }
 
-  const addClient = async () => {
+  const addClient = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newClientName || !newClientEmail) {
       alert('Preencha nome e email')
       return
@@ -132,34 +98,45 @@ export default function Dashboard() {
   }
 
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
+  const exportToCSV = () => {
+    const headers = ["ID", "Nome", "Email", "Status", "Data de Cadastro"];
+    const rows = filteredClients.map(client => 
+      [client.id, client.name, client.email, client.is_active ? "Ativo" : "Inativo", new Date(client.created_at).toLocaleDateString('pt-BR')]
+    );
+  
+    let csvContent = headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+  
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, "clientes.csv");
+  }
+  
   const totalClients = clients.length
   const activeClients = clients.filter(c => c.is_active).length
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Icons.BarChart3 />
+              <BarChart3 className="text-blue-600" />
               <h1 className="ml-2 text-2xl font-bold text-gray-900">InvestFlow</h1>
             </div>
             
             <div className="flex items-center space-x-4">
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700">
-                <Icons.Download />
+              <button onClick={exportToCSV} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700">
+                <Download size={16} />
                 <span className="ml-2">Exportar</span>
               </button>
               <button 
                 onClick={handleLogout}
                 className="flex items-center text-gray-600 hover:text-gray-900"
               >
-                <Icons.LogOut />
+                <LogOut size={20} />
                 <span className="ml-1">Sair</span>
               </button>
             </div>
@@ -167,13 +144,13 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total de Clientes */}
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Icons.Users />
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Users className="text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total de Clientes</p>
@@ -181,11 +158,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
+          {/* Clientes Ativos */}
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Icons.TrendingUp />
+              <div className="p-3 bg-green-100 rounded-lg">
+                <TrendingUp className="text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Clientes Ativos</p>
@@ -193,21 +170,22 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
+          {/* Captação Total */}
           <div className="bg-white rounded-xl shadow-sm p-6 border">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Icons.DollarSign />
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <DollarSign className="text-purple-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Captação Total</p>
-                <p className="text-2xl font-bold text-gray-900">R$ 0,00</p>
+                <p className="text-2xl font-bold text-gray-900">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(officeTotal)}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Clients Section */}
         <div className="bg-white rounded-xl shadow-sm border">
           <div className="p-6 border-b">
             <div className="flex justify-between items-center">
@@ -216,136 +194,94 @@ export default function Dashboard() {
                 onClick={() => setShowAddClient(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"
               >
-                <Icons.Plus />
+                <Plus size={16} />
                 <span className="ml-2">Novo Cliente</span>
               </button>
             </div>
           </div>
 
-          {/* Search Bar */}
           <div className="p-6 border-b">
             <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <Icons.Search />
-              </div>
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
               <input
                 type="text"
                 placeholder="Buscar clientes por nome ou email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
               />
             </div>
           </div>
 
-          {/* Clients Table */}
-          <div className="overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data de Cadastro
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data de Cadastro</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredClients.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-50">
+                  <tr key={client.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/dashboard/client/${client.id}`)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{client.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{client.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{client.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-600">{client.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        client.is_active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        client.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {client.is_active ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {new Date(client.created_at).toLocaleDateString('pt-BR')}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(client.created_at).toLocaleDateString('pt-BR')}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            
             {filteredClients.length === 0 && (
-              <div className="text-center py-12">
-                <div className="mx-auto h-12 w-12 text-gray-400">
-                  <Icons.Users />
-                </div>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum cliente</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Comece adicionando seu primeiro cliente.
-                </p>
+              <div className="text-center py-12 text-gray-500">
+                <Users size={48} className="mx-auto mb-2"/>
+                <h3 className="text-lg">Nenhum cliente encontrado</h3>
+                <p>Adicione um novo cliente para começar.</p>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Add Client Modal */}
+      {/* Modal Adicionar Cliente */}
       {showAddClient && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6">
             <h3 className="text-lg font-semibold mb-4">Adicionar Novo Cliente</h3>
-            
-            <div className="space-y-4">
+            <form onSubmit={addClient} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
                 <input
                   type="text"
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nome completo"
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
                 />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={newClientEmail}
                   onChange={(e) => setNewClientEmail(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="email@exemplo.com"
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  required
                 />
               </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowAddClient(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={addClient}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-              >
-                Adicionar Cliente
-              </button>
-            </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={() => setShowAddClient(false)} className="px-4 py-2 text-gray-600">Cancelar</button>
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Adicionar Cliente</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
