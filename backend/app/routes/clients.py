@@ -1,55 +1,35 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Client
-from app.schemas import Client as ClientSchema, ClientCreate
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from typing import List, Optional
 
-router = APIRouter()
+from app.database import get_session 
+from app.models.client import Client
+from app.schemas.client import ClientCreate, ClientPublic 
 
-@router.get("/", response_model=list[ClientSchema])
-def list_clients(db: Session = Depends(get_db)):
-    return db.query(Client).all()
+router = APIRouter(prefix="/clients", tags=["Clients"])
 
-@router.post("/", response_model=ClientSchema)
-def create_client(client_data: ClientCreate, db: Session = Depends(get_db)):
-    
-    if db.query(Client).filter(Client.email == client_data.email).first():
-        raise HTTPException(status_code=400, detail="Email já existe")
-    
-    new_client = Client(
-        name=client_data.name,
-        email=client_data.email
-    )
-    db.add(new_client)
-    db.commit()
-    db.refresh(new_client)
+@router.post("/", response_model=ClientPublic, status_code=201)
+async def create_client(client_data: ClientCreate, session: AsyncSession = Depends(get_session)):
+    stmt = select(Client).where(Client.email == client_data.email)
+    existing_client = await session.execute(stmt)
+    if existing_client.scalars().first():
+        raise HTTPException(status_code=400, detail="Este email já está cadastrado.")
+
+    new_client = Client(name=client_data.name, email=client_data.email)
+    session.add(new_client)
+    await session.commit()
+    await session.refresh(new_client)
     return new_client
 
-@router.get("/{client_id}", response_model=ClientSchema)
-def get_client(client_id: int, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    return client
+@router.get("/", response_model=List[ClientPublic])
+async def list_clients(
+    session: AsyncSession = Depends(get_session),
+    search: Optional[str] = Query(None)
+):
+    query = select(Client).order_by(Client.id)
+    if search:
+        query = query.where(Client.name.ilike(f"%{search}%"))
 
-@router.put("/{client_id}", response_model=ClientSchema)
-def update_client(client_id: int, client_data: ClientCreate, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    client.name = client_data.name
-    client.email = client_data.email
-    
-    db.commit()
-    return client
-
-@router.delete("/{client_id}")
-def delete_client(client_id: int, db: Session = Depends(get_db)):
-    client = db.query(Client).filter(Client.id == client_id).first()
-    if not client:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    
-    client.is_active = False
-    db.commit()
-    return {"message": "Cliente desativado"}
+    result = await session.execute(query)
+    return result.scalars().all()
