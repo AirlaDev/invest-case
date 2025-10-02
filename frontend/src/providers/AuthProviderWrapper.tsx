@@ -1,7 +1,11 @@
 'use client'
 
-import { AuthProvider } from '@/hooks/useAuth'
+import { ReactNode } from 'react'
 
-export function AuthProviderWrapper({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>
+interface AuthProviderWrapperProps {
+  children: ReactNode
+}
+
+export function AuthProviderWrapper({ children }: AuthProviderWrapperProps) {
+  return <>{children}</>
 }

@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Asset(Base):
@@ -23,7 +22,3 @@ class Allocation(Base):
     buy_price = Column(Float, nullable=False)
     buy_date = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # Relationships
-    client = relationship("Client", backref="allocations")
-    asset = relationship("Asset", backref="allocations")

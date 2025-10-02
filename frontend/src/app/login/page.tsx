@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Shield, ArrowRight, Mail } from "lucide-react"
 
 function LoginContent() {
-  const [email, setEmail] = useState('admin@invest.com')
+  const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('admin123')
   const { login, isLoading } = useAuth()
   const router = useRouter()
@@ -19,11 +19,15 @@ function LoginContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const result = await login(email, password)
+    console.log('Tentando login com:', username)
+    
+    const result = await login(username, password)
     
     if (result.success) {
+      console.log('Login bem-sucedido!')
       router.push('/dashboard')
     } else {
+      console.error('Login falhou:', result.error)
       alert(result.error || 'Erro ao fazer login')
     }
   }
@@ -52,15 +56,15 @@ function LoginContent() {
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+            <Label htmlFor="username" className="text-sm font-medium">Usuário</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="admin"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="pl-10 bg-white border-gray-300 focus:border-blue-500"
                 required
               />
@@ -107,7 +111,7 @@ function LoginContent() {
           
           <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-xs text-gray-600 text-center">
-              <strong>Demo:</strong> admin@invest.com / admin123
+              <strong>Demo:</strong> admin / admin123
             </p>
           </div>
         </form>

@@ -9,6 +9,31 @@ from app.models.client import Client
 from app.schemas.client import ClientCreate, ClientPublic, ClientList
 from app.auth.dependencies import get_current_user
 
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
+from datetime import datetime
+
+class ClientBase(BaseModel):
+    name: str
+    email: str
+    is_active: bool = True
+
+class ClientCreate(ClientBase):
+    pass
+
+class ClientPublic(ClientBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ClientList(BaseModel):
+    clients: List[ClientPublic]
+    total: int
+    page: int
+    pages: int
+
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
 @router.get("/", response_model=ClientList)
@@ -135,3 +160,43 @@ async def delete_client(
     await session.commit()
     
     return {"message": "Cliente deletado com sucesso"}
+
+@router.patch("/{client_id}/activate", response_model=ClientPublic)
+async def activate_client(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user)
+):
+    """Ativar cliente"""
+    stmt = select(Client).where(Client.id == client_id)
+    result = await session.execute(stmt)
+    client = result.scalars().first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    client.is_active = True
+    await session.commit()
+    await session.refresh(client)
+    
+    return client
+
+@router.patch("/{client_id}/inactivate", response_model=ClientPublic)
+async def inactivate_client(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user)
+):
+    """Inativar cliente"""
+    stmt = select(Client).where(Client.id == client_id)
+    result = await session.execute(stmt)
+    client = result.scalars().first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    client.is_active = False
+    await session.commit()
+    await session.refresh(client)
+    
+    return client

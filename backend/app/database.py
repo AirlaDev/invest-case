@@ -1,9 +1,10 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+import os
 
-# SQLite async (para desenvolvimento)
-DATABASE_URL = "sqlite+aiosqlite:///./investcase.db"
+# PostgreSQL async
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://invest:investpw@db:5432/investdb")
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
