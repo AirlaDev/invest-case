@@ -1,16 +1,44 @@
 // frontend/src/app/dashboard/transactions/page.tsx
 'use client';
-import { useState, useMemo } from 'react';
-import { mockTransactions, mockClients } from '@/lib/mock-data';
-import { Transaction } from '@/types';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Transaction, Client } from '@/types'; // Tipos atualizados
 
-// CORREÇÃO: Usando export default
 export default function TransactionsPage() {
-  const [transactions] = useState<Transaction[]>(mockTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [transactionsRes, clientsRes] = await Promise.all([
+          fetch('/api/movements'),
+          fetch('/api/clients')
+        ]);
+
+        if (transactionsRes.ok) {
+          const data = await transactionsRes.json();
+          setTransactions(data);
+        }
+
+        if (clientsRes.ok) {
+          const data = await clientsRes.json();
+          setClients(data.clients || data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
 
   const stats = useMemo(() => {
     const entradas = transactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
@@ -25,6 +53,10 @@ export default function TransactionsPage() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
+
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -57,7 +89,7 @@ export default function TransactionsPage() {
             </TableHeader>
             <TableBody>
               {transactions.map((transaction) => {
-                const client = mockClients.find((c: { id: number; }) => c.id === transaction.client_id);
+                const client = clients.find((c) => c.id === transaction.client_id);
                 return (
                   <TableRow key={transaction.id}>
                     <TableCell>{client?.name}</TableCell>

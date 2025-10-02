@@ -78,7 +78,7 @@ export function Sidebar() {
         <Button 
           onClick={handleLogout}
           variant="outline" 
-          className="w-full justify-start text-white border-white/20 hover:bg-white/10"
+          className="w-full justify-start text-white border-white/20 hover:bg-white/10 hover:text-white"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Sair

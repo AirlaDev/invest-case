@@ -29,7 +29,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalClients, setTotalClients] = useState(0);
@@ -52,7 +52,7 @@ export default function ClientsPage() {
         page: page.toString(),
         limit: '10',
         ...(search && { search }),
-        ...(statusFilter && { is_active: statusFilter === 'active' ? 'true' : 'false' })
+        ...(statusFilter !== 'all' && { is_active: statusFilter === 'active' ? 'true' : 'false' })
       });
 
       const response = await fetch(`/api/clients?${params}`, {
@@ -63,17 +63,13 @@ export default function ClientsPage() {
       
       if (response.ok) {
         const data: ClientListResponse = await response.json();
-        setClients(data.clients || []);
-        setTotalPages(data.pages || 1);
-        setTotalClients(data.total || 0);
-      } else {
-        console.error('Erro na resposta:', response.status);
-        setClients([]);
+        setClients(data.clients);
+        setTotalPages(data.pages);
+        setTotalClients(data.total);
       }
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       alert('Erro ao carregar clientes');
-      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -110,20 +106,13 @@ export default function ClientsPage() {
   const handleStatusChange = async (clientId: number, isActive: boolean) => {
     try {
       const token = localStorage.getItem('token');
-      const client = clients.find(c => c.id === clientId);
-      if (!client) return;
-
       const response = await fetch(`/api/clients/${clientId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          name: client.name, 
-          email: client.email, 
-          is_active: isActive 
-        }),
+        body: JSON.stringify({ ...clients.find(c => c.id === clientId), is_active: isActive }),
       });
 
       if (response.ok) {
@@ -213,10 +202,10 @@ export default function ClientsPage() {
               />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos os status" />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os status</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="active">Ativos</SelectItem>
                   <SelectItem value="inactive">Inativos</SelectItem>
                 </SelectContent>
@@ -235,7 +224,7 @@ export default function ClientsPage() {
         <CardHeader>
           <CardTitle>Lista de Clientes</CardTitle>
           <CardDescription>
-            {(clients && clients.length) || 0} cliente(s) encontrado(s) nesta página
+            {clients.length} cliente(s) encontrado(s) nesta página
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -255,49 +244,47 @@ export default function ClientsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clients && clients.length > 0 ? (
-                    clients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell>{client.id}</TableCell>
-                        <TableCell className="font-medium">{client.name}</TableCell>
-                        <TableCell>{client.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={client.is_active ? "default" : "secondary"}>
-                            {client.is_active ? 'Ativo' : 'Inativo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(client.created_at).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleStatusChange(client.id, !client.is_active)}
-                            >
-                              {client.is_active ? 'Inativar' : 'Ativar'}
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => handleDeleteClient(client.id)}
-                            >
-                              Excluir
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        Nenhum cliente encontrado
+                  {clients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>{client.id}</TableCell>
+                      <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={client.is_active ? "default" : "secondary"}>
+                          {client.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleStatusChange(client.id, !client.is_active)}
+                          >
+                            {client.is_active ? 'Inativar' : 'Ativar'}
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDeleteClient(client.id)}
+                          >
+                            Excluir
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  )}
+                  ))}
                 </TableBody>
               </Table>
+              
+              {clients.length === 0 && !loading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum cliente encontrado
+                </div>
+              )}
 
               {/* Paginação */}
               {totalPages > 1 && (

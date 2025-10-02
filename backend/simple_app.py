@@ -24,13 +24,15 @@ class MovementBase(BaseModel):
 clients_db = []
 assets_db = []
 allocations_db = []
+movements_db = []
 current_client_id = 1
 current_asset_id = 1
 current_allocation_id = 1
+current_movement_id = 1
 
 # Add sample data
 def add_sample_data():
-    global clients_db, assets_db, allocations_db, current_client_id, current_asset_id, current_allocation_id
+    global clients_db, assets_db, allocations_db, movements_db, current_client_id, current_asset_id, current_allocation_id, current_movement_id
     
     # Sample clients
     sample_clients = [
@@ -56,6 +58,16 @@ def add_sample_data():
     ]
     allocations_db.extend(sample_allocations)
     current_allocation_id = len(sample_allocations) + 1
+
+    # Sample movements
+    sample_movements = [
+        {"id": 1, "client_id": 1, "type": MovementType.DEPOSIT, "amount": 10000.00, "date": datetime.now(), "note": "Depósito inicial", "created_at": datetime.now()},
+        {"id": 2, "client_id": 2, "type": MovementType.DEPOSIT, "amount": 5000.00, "date": datetime.now(), "note": "Aporte", "created_at": datetime.now()},
+        {"id": 3, "client_id": 1, "type": MovementType.WITHDRAWAL, "amount": 2000.00, "date": datetime.now(), "note": "Retirada", "created_at": datetime.now()},
+    ]
+    movements_db.extend(sample_movements)
+    current_movement_id = len(sample_movements) + 1
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -157,22 +169,6 @@ class MovementSummary(BaseModel):
     net_flow: float
     client_summary: List[dict]
 
-# Mock database para movements
-movements_db = []
-current_movement_id = 1
-
-# Adicione sample data para movements
-def add_sample_data():
-    global clients_db, assets_db, allocations_db, movements_db, current_client_id, current_asset_id, current_allocation_id, current_movement_id
-
-# Sample movements
-    sample_movements = [
-        {"id": 1, "client_id": 1, "type": MovementType.DEPOSIT, "amount": 10000.00, "date": datetime.now(), "note": "Depósito inicial", "created_at": datetime.now()},
-        {"id": 2, "client_id": 2, "type": MovementType.DEPOSIT, "amount": 5000.00, "date": datetime.now(), "note": "Aporte", "created_at": datetime.now()},
-        {"id": 3, "client_id": 1, "type": MovementType.WITHDRAWAL, "amount": 2000.00, "date": datetime.now(), "note": "Retirada", "created_at": datetime.now()},
-    ]
-    movements_db.extend(sample_movements)
-    current_movement_id = len(sample_movements) + 1
 
 # Client Routes
 @app.get("/")
@@ -234,6 +230,43 @@ async def create_client(client_data: ClientCreate):
     
     print(f"✅ Novo cliente criado: {new_client}")
     return new_client
+
+@app.put("/api/clients/{client_id}", response_model=ClientPublic)
+async def update_client(client_id: int, client_data: ClientCreate):
+    client_index = -1
+    for i, c in enumerate(clients_db):
+        if c["id"] == client_id:
+            client_index = i
+            break
+    
+    if client_index == -1:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    # Verificar se o email já existe em outro cliente
+    for i, c in enumerate(clients_db):
+        if c["email"] == client_data.email and i != client_index:
+            raise HTTPException(status_code=400, detail="Este email já está cadastrado.")
+
+    clients_db[client_index]["name"] = client_data.name
+    clients_db[client_index]["email"] = client_data.email
+    clients_db[client_index]["is_active"] = client_data.is_active
+    
+    return clients_db[client_index]
+
+@app.delete("/api/clients/{client_id}")
+async def delete_client(client_id: int):
+    client_index = -1
+    for i, c in enumerate(clients_db):
+        if c["id"] == client_id:
+            client_index = i
+            break
+            
+    if client_index == -1:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    clients_db.pop(client_index)
+    
+    return {"message": "Cliente deletado com sucesso"}
 
 # Asset Routes
 @app.get("/api/assets", response_model=List[AssetPublic])

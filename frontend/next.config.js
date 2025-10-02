@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:8001/api/:path*', // 🔥 MUDADO para 8001
+        destination: 'http://localhost:8001/api/:path*', 
       },
     ];
   },

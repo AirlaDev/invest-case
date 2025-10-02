@@ -135,3 +135,43 @@ async def delete_client(
     await session.commit()
     
     return {"message": "Cliente deletado com sucesso"}
+
+@router.patch("/{client_id}/activate", response_model=ClientPublic)
+async def activate_client(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user)
+):
+    """Ativar cliente"""
+    stmt = select(Client).where(Client.id == client_id)
+    result = await session.execute(stmt)
+    client = result.scalars().first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    client.is_active = True
+    await session.commit()
+    await session.refresh(client)
+    
+    return client
+
+@router.patch("/{client_id}/inactivate", response_model=ClientPublic)
+async def inactivate_client(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user)
+):
+    """Inativar cliente"""
+    stmt = select(Client).where(Client.id == client_id)
+    result = await session.execute(stmt)
+    client = result.scalars().first()
+    
+    if not client:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    
+    client.is_active = False
+    await session.commit()
+    await session.refresh(client)
+    
+    return client
