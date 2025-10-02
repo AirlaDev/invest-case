@@ -1,252 +1,330 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { mockClients } from '@/lib/mock-data'
-import { Client } from '@/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Search, Users, UserPlus, UserCheck } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
+interface Client {
+  id: number;
+  name: string;
+  email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ClientListResponse {
+  clients: Client[];
+  total: number;
+  page: number;
+  pages: number;
+}
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>(mockClients)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalClients, setTotalClients] = useState(0);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newClient, setNewClient] = useState({
     name: '',
     email: '',
-    cpf: '',
-    phone: '',
-  })
+    is_active: true
+  });
 
-  const filteredClients = clients.filter(client => {
-    const name = client.name || ''
-    const email = client.email || ''
-    const cpf = client.cpf || ''
-    
-    return (
-      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cpf.includes(searchTerm)
-    )
-  })
+  useEffect(() => {
+    fetchClients();
+  }, [search, statusFilter, page]);
 
-  const handleAddClient = () => {
-    if (!newClient.name || !newClient.email) {
-      alert('Nome e email são obrigatórios!')
-      return
-    }
-
-    const client: Client = {
-      id: String(clients.length + 1),
-      name: newClient.name.trim(),
-      email: newClient.email.trim(),
-      cpf: newClient.cpf.trim(),
-      phone: newClient.phone.trim(),
-      createdAt: new Date().toISOString().split('T')[0],
-    }
-    setClients([...clients, client])
-    setNewClient({ name: '', email: '', cpf: '', phone: '' })
-    setIsAddDialogOpen(false)
-  }
-
-  const getInitials = (name: string) => {
-    if (!name) return '??'
-    return name
-      .split(' ')
-      .map(part => part[0] || '')
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
-  const totalClients = clients.length
-  const newThisMonth = clients.filter(c => {
+  const fetchClients = async () => {
     try {
-      const clientDate = new Date(c.createdAt)
-      const now = new Date()
-      return clientDate.getMonth() === now.getMonth() &&
-             clientDate.getFullYear() === now.getFullYear()
-    } catch {
-      return false
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+        ...(search && { search }),
+        ...(statusFilter && { is_active: statusFilter === 'active' ? 'true' : 'false' })
+      });
+
+      const response = await fetch(`/api/clients?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data: ClientListResponse = await response.json();
+        setClients(data.clients || []);
+        setTotalPages(data.pages || 1);
+        setTotalClients(data.total || 0);
+      } else {
+        console.error('Erro na resposta:', response.status);
+        setClients([]);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error);
+      alert('Erro ao carregar clientes');
+      setClients([]);
+    } finally {
+      setLoading(false);
     }
-  }).length
+  };
+
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newClient),
+      });
+
+      if (response.ok) {
+        setIsCreateDialogOpen(false);
+        setNewClient({ name: '', email: '', is_active: true });
+        fetchClients();
+        alert('Cliente criado com sucesso!');
+      } else {
+        const error = await response.json();
+        alert(error.detail || 'Erro ao criar cliente');
+      }
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+      alert('Erro ao criar cliente');
+    }
+  };
+
+  const handleStatusChange = async (clientId: number, isActive: boolean) => {
+    try {
+      const token = localStorage.getItem('token');
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          name: client.name, 
+          email: client.email, 
+          is_active: isActive 
+        }),
+      });
+
+      if (response.ok) {
+        fetchClients();
+        alert('Status do cliente atualizado com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      alert('Erro ao atualizar status do cliente');
+    }
+  };
+
+  const handleDeleteClient = async (clientId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (response.ok) {
+        fetchClients();
+        alert('Cliente excluído com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      alert('Erro ao excluir cliente');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie os clientes do escritório
-          </p>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Clientes</h1>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4" />
-              Novo Cliente
-            </Button>
+            <Button>Novo Cliente</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle className="text-xl">Adicionar Novo Cliente</DialogTitle>
+              <DialogTitle>Novo Cliente</DialogTitle>
+              <DialogDescription>
+                Preencha os dados do novo cliente
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
+            <form onSubmit={handleCreateClient} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Nome Completo *</Label>
+                <Label htmlFor="name">Nome</Label>
                 <Input
                   id="name"
                   value={newClient.name}
                   onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                  className="bg-white border-gray-300 focus:border-blue-500"
-                  placeholder="Digite o nome completo"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email *</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={newClient.email}
                   onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                  className="bg-white border-gray-300 focus:border-blue-500"
-                  placeholder="cliente@email.com"
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cpf" className="text-sm font-medium">CPF</Label>
-                  <Input
-                    id="cpf"
-                    value={newClient.cpf}
-                    onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })}
-                    placeholder="000.000.000-00"
-                    className="bg-white border-gray-300 focus:border-blue-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-sm font-medium">Telefone</Label>
-                  <Input
-                    id="phone"
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                    className="bg-white border-gray-300 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              <Button 
-                onClick={handleAddClient} 
-                className="w-full bg-blue-600 hover:bg-blue-700 mt-4"
-              >
-                Adicionar Cliente
-              </Button>
-            </div>
+              <DialogFooter>
+                <Button type="submit">Criar Cliente</Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total de Clientes</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalClients}</div>
-            <p className="text-xs text-gray-500 mt-1">+2 desde o último mês</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Novos este Mês</CardTitle>
-            <UserPlus className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{newThisMonth}</div>
-            <p className="text-xs text-gray-500 mt-1">+1 desde a última semana</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Clientes Ativos</CardTitle>
-            <UserCheck className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalClients}</div>
-            <p className="text-xs text-gray-500 mt-1">100% do total</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Clients Table */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Filtros e Estatísticas */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
-                placeholder="Buscar por nome, email ou CPF..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white border-gray-300 focus:border-blue-500"
+                placeholder="Buscar por nome ou email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos os status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os status</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="text-sm text-muted-foreground">
+                {totalClients} cliente(s) no total
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Data Cadastro</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClients.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Nenhum cliente encontrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredClients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-700 text-sm font-medium">
-                              {getInitials(client.name)}
-                            </span>
-                          </div>
-                          {client.name || 'Nome não informado'}
-                        </div>
-                      </TableCell>
-                      <TableCell>{client.email || 'Email não informado'}</TableCell>
-                      <TableCell>{client.cpf || 'CPF não informado'}</TableCell>
-                      <TableCell>{client.phone || 'Telefone não informado'}</TableCell>
-                      <TableCell>
-                        {client.createdAt ? new Date(client.createdAt).toLocaleDateString('pt-BR') : 'Data inválida'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <Button onClick={fetchClients}>Buscar</Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Tabela */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Clientes</CardTitle>
+          <CardDescription>
+            {(clients && clients.length) || 0} cliente(s) encontrado(s) nesta página
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">Carregando clientes...</div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data Cadastro</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clients && clients.length > 0 ? (
+                    clients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell>{client.id}</TableCell>
+                        <TableCell className="font-medium">{client.name}</TableCell>
+                        <TableCell>{client.email}</TableCell>
+                        <TableCell>
+                          <Badge variant={client.is_active ? "default" : "secondary"}>
+                            {client.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleStatusChange(client.id, !client.is_active)}
+                            >
+                              {client.is_active ? 'Inativar' : 'Ativar'}
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              size="sm"
+                              onClick={() => handleDeleteClient(client.id)}
+                            >
+                              Excluir
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Nenhum cliente encontrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-4">
+                  <Button 
+                    variant="outline" 
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <span className="text-sm">
+                    Página {page} de {totalPages}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

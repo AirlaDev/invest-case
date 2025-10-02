@@ -1,8 +1,16 @@
 import { Client, Allocation, Transaction, Asset } from '@/types'; 
 
 export const mockClients: Omit<Client, 'is_active' | 'created_at'>[] = [
-  { id: 1, name: 'João Silva', email: 'joao.silva@example.com' },
-  { id: 2, name: 'Maria Oliveira', email: 'maria.o@example.com' },
+  {
+      id: 1, name: 'João Silva', email: 'joao.silva@example.com',
+      cpf: '',
+      phone: ''
+  },
+  {
+      id: 2, name: 'Maria Oliveira', email: 'maria.o@example.com',
+      phone: '',
+      cpf: ''
+  },
 ];
 
 export const mockAssets: Asset[] = [

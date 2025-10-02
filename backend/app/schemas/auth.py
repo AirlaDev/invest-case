@@ -1,18 +1,12 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 class Token(BaseModel):
     access_token: str
     token_type: str
 
-class UserPublic(BaseModel):
-    id: int
-    email: EmailStr
-    is_active: bool
+class TokenData(BaseModel):
+    email: str = None
 
-    class Config:
-        from_attributes = True
-
-# Este é o schema que estava faltando
-class UserCreate(BaseModel):
-    email: EmailStr
+class LoginRequest(BaseModel):
+    email: str
     password: str

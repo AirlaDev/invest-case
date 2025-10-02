@@ -1,10 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Adicione esta configuração de webpack
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8001/api/:path*', // 🔥 MUDADO para 8001
+      },
+    ];
+  },
   webpack: (config) => {
     config.watchOptions = {
-      poll: 1000, // Verifica por mudanças a cada 1000ms (1 segundo)
-      aggregateTimeout: 300, // Agrupa múltiplas mudanças em uma única reconstrução
+      poll: 1000,
+      aggregateTimeout: 300,
     };
     return config;
   },
