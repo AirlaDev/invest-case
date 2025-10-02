@@ -1,49 +1,75 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from typing import Optional
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
+from datetime import timedelta, datetime
+import bcrypt
 
-from app.database import get_db
-from app.auth.security import (
-    verify_password, 
-    get_password_hash, 
-    create_access_token, 
-    verify_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES
-)
-from datetime import timedelta
+router = APIRouter(tags=["auth"])
 
-router = APIRouter()
+SECRET_KEY = "junior-secret-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Usuários do sistema - SIMPLES E DIRETO
 fake_users_db = {
     "admin": {
         "username": "admin",
         "full_name": "Administrator",
-        "email": "admin@investcase.com",
-        "hashed_password": get_password_hash("admin123"),
+        "email": "admin@invest.com",
+        "password": "admin123",  # ✅ Senha em texto plano para desenvolvimento
         "disabled": False,
     }
 }
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+def verify_password(plain_password: str, stored_password: str) -> bool:
+    """Verifica se a senha está correta"""
+    return plain_password == stored_password
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 def authenticate_user(username: str, password: str):
-    """Autentica o usuário"""
+    print(f"🔐 Tentando autenticar usuário: {username}")
     user = fake_users_db.get(username)
     if not user:
+        print(f"❌ Usuário {username} não encontrado")
         return False
-    if not verify_password(password, user["hashed_password"]):
+    
+    print(f"✅ Usuário encontrado: {user['username']}")
+    print(f"🔑 Verificando senha...")
+    print(f"Senha fornecida: '{password}'")
+    print(f"Senha esperada: '{user['password']}'")
+    
+    # Verificar senha
+    password_ok = verify_password(password, user["password"])
+    print(f"Senha correta: {password_ok}")
+    
+    if not password_ok:
+        print(f"❌ Senha incorreta para {username}")
         return False
+    
+    print(f"✅ Login bem-sucedido para {username}")
     return user
 
 @router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Endpoint para login e obtenção de token"""
+    print(f"\n🚀 Recebendo requisição de login")
+    print(f"Username: {form_data.username}")
+    print(f"Password length: {len(form_data.password)}")
+    
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
+        print("❌ Autenticação falhou")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário ou senha incorretos",
+            detail="Email ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -52,55 +78,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": user["username"]}, expires_delta=access_token_expires
     )
     
+    print(f"✅ Token gerado com sucesso para {user['username']}")
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "username": user["username"],
         "full_name": user["full_name"]
     }
-
-@router.get("/users/me")
-async def read_users_me(token: str = Depends(oauth2_scheme)):
-    """Endpoint para obter informações do usuário atual"""
-    user_data = verify_token(token)
-    if user_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido ou expirado",
-        )
-    
-    username = user_data.get("sub")
-    user = fake_users_db.get(username)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário não encontrado",
-        )
-    
-    return user
-
-@router.post("/register")
-async def register_user(
-    username: str,
-    email: str,
-    full_name: str,
-    password: str,
-    db: Session = Depends(get_db)
-):
-    """Endpoint para registro de novo usuário"""
-    if username in fake_users_db:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Usuário já existe",
-        )
-    
-    hashed_password = get_password_hash(password)
-    fake_users_db[username] = {
-        "username": username,
-        "email": email,
-        "full_name": full_name,
-        "hashed_password": hashed_password,
-        "disabled": False,
-    }
-    
-    return {"message": "Usuário criado com sucesso"}

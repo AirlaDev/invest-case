@@ -9,6 +9,31 @@ from app.models.client import Client
 from app.schemas.client import ClientCreate, ClientPublic, ClientList
 from app.auth.dependencies import get_current_user
 
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
+from datetime import datetime
+
+class ClientBase(BaseModel):
+    name: str
+    email: str
+    is_active: bool = True
+
+class ClientCreate(ClientBase):
+    pass
+
+class ClientPublic(ClientBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ClientList(BaseModel):
+    clients: List[ClientPublic]
+    total: int
+    page: int
+    pages: int
+
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
 @router.get("/", response_model=ClientList)

@@ -1,9 +1,48 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { BarChart3, Users, DollarSign, TrendingUp, ArrowRight } from "lucide-react"
-import Link from "next/link"
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BarChart3, Users, DollarSign, TrendingUp, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ExportService } from '@/lib/exportService';
 
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setToken(localStorage.getItem('token'));
+  }, []);
+
+  const handleExport = async () => {
+    setLoading(true);
+    try {
+      if (token) {
+        const [clientsRes, allocationsRes, movementsRes] = await Promise.all([
+          fetch('/api/clients/', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/assets/allocations/', { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/movements/', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        const clientsData = await clientsRes.json();
+        const allocationsData = await allocationsRes.json();
+        const movementsData = await movementsRes.json();
+
+        ExportService.exportToExcel({
+          clients: clientsData.clients || clientsData,
+          allocations: allocationsData,
+          movements: movementsData,
+        }, 'Relatorio-InvestCase');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      alert('Erro ao gerar relatório. Verifique o console para mais detalhes.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -13,8 +52,8 @@ export default function DashboardPage() {
             Visão geral do seu escritório
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
-          Gerar Relatório
+        <Button onClick={handleExport} disabled={loading} className="bg-blue-600 hover:bg-blue-700 gap-2">
+          {loading ? 'Gerando...' : 'Gerar Relatório'}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>

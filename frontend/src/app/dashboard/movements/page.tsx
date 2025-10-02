@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 
 interface Movement {
   id: number;
@@ -22,13 +21,6 @@ interface MovementSummary {
   total_deposits: number;
   total_withdrawals: number;
   net_flow: number;
-  client_summary: Array<{
-    client_id: number;
-    client_name: string;
-    total_deposits: number;
-    total_withdrawals: number;
-    net_flow: number;
-  }>;
 }
 
 interface Client {
@@ -65,28 +57,19 @@ export default function MovementsPage() {
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
-      
       if (filters.client_id) params.append('client_id', filters.client_id);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
       if (filters.type) params.append('type', filters.type);
 
-      const response = await fetch(`/api/movements?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`/api/movements/?${params}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      
       if (response.ok) {
-        const data = await response.json();
-        setMovements(data);
-      } else {
-        console.error('Erro ao buscar movimentações:', await response.text());
-        setMovements([]);
+        setMovements(await response.json());
       }
     } catch (error) {
       console.error('Erro ao buscar movimentações:', error);
-      setMovements([]);
     } finally {
       setLoading(false);
     }
@@ -95,12 +78,9 @@ export default function MovementsPage() {
   const fetchClients = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/clients', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch('/api/clients/', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (response.ok) {
         const data = await response.json();
         setClients(data.clients || data);
@@ -114,20 +94,15 @@ export default function MovementsPage() {
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams();
-      
       if (filters.client_id) params.append('client_id', filters.client_id);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
 
-      const response = await fetch(`/api/movements/summary?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await fetch(`/api/movements/summary/?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       if (response.ok) {
-        const data = await response.json();
-        setSummary(data);
+        setSummary(await response.json());
       }
     } catch (error) {
       console.error('Erro ao buscar resumo:', error);
@@ -138,7 +113,7 @@ export default function MovementsPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/movements', {
+      const response = await fetch('/api/movements/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,42 +136,29 @@ export default function MovementsPage() {
         });
         fetchMovements();
         fetchSummary();
-        alert('✅ Movimentação registrada com sucesso!');
+        alert('Movimentação registrada!');
       } else {
         const error = await response.json();
-        alert(`❌ ${error.detail || 'Erro ao registrar movimentação'}`);
+        alert(error.detail || 'Erro');
       }
     } catch (error) {
-      console.error('Erro ao criar movimentação:', error);
-      alert('❌ Erro ao registrar movimentação');
+      alert('Erro ao registrar');
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
-  };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div>Carregando movimentações...</div>
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Movimentações</h1>
-      </div>
+      <h1 className="text-3xl font-bold">Movimentações</h1>
 
-      {/* Resumo */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Entradas</CardTitle>
+              <CardTitle className="text-sm">Total Entradas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
@@ -206,7 +168,7 @@ export default function MovementsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Saídas</CardTitle>
+              <CardTitle className="text-sm">Total Saídas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
@@ -216,23 +178,11 @@ export default function MovementsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Fluxo Líquido</CardTitle>
+              <CardTitle className="text-sm">Fluxo Líquido</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${
-                summary.net_flow >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <div className={`text-2xl font-bold ${summary.net_flow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 R$ {summary.net_flow.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Clientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summary.client_summary.length}
               </div>
             </CardContent>
           </Card>
@@ -240,62 +190,52 @@ export default function MovementsPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Formulário de Nova Movimentação */}
         <Card>
           <CardHeader>
             <CardTitle>Nova Movimentação</CardTitle>
-            <CardDescription>
-              Registre uma nova entrada ou saída
-            </CardDescription>
+            <CardDescription>Registre entrada ou saída</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateMovement} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="client">Cliente *</Label>
-                <select 
-                  id="client"
-                  value={newMovement.client_id} 
+                <Label>Cliente *</Label>
+                <select
+                  value={newMovement.client_id}
                   onChange={(e) => setNewMovement({ ...newMovement, client_id: e.target.value })}
                   className="w-full p-2 border rounded-md"
                   required
                 >
-                  <option value="">Selecione o cliente</option>
+                  <option value="">Selecione</option>
                   {clients.map((client) => (
-                    <option key={client.id} value={client.id.toString()}>
+                    <option key={client.id} value={client.id}>
                       {client.name}
                     </option>
                   ))}
                 </select>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="type">Tipo *</Label>
-                <select 
-                  id="type"
-                  value={newMovement.type} 
+                <Label>Tipo *</Label>
+                <select
+                  value={newMovement.type}
                   onChange={(e) => setNewMovement({ ...newMovement, type: e.target.value as 'deposit' | 'withdrawal' })}
                   className="w-full p-2 border rounded-md"
                 >
-                  <option value="deposit">Entrada (Depósito)</option>
-                  <option value="withdrawal">Saída (Retirada)</option>
+                  <option value="deposit">Entrada</option>
+                  <option value="withdrawal">Saída</option>
                 </select>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="amount">Valor (R$) *</Label>
+                <Label>Valor (R$) *</Label>
                 <Input
                   type="number"
                   step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
                   value={newMovement.amount}
                   onChange={(e) => setNewMovement({ ...newMovement, amount: e.target.value })}
                   required
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="date">Data *</Label>
+                <Label>Data *</Label>
                 <Input
                   type="date"
                   value={newMovement.date}
@@ -303,138 +243,87 @@ export default function MovementsPage() {
                   required
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="note">Observação</Label>
+                <Label>Observação</Label>
                 <Input
-                  placeholder="Observação (opcional)"
                   value={newMovement.note}
                   onChange={(e) => setNewMovement({ ...newMovement, note: e.target.value })}
                 />
               </div>
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={!newMovement.client_id || !newMovement.amount}
-              >
-                Registrar Movimentação
+              <Button type="submit" className="w-full" disabled={!newMovement.client_id || !newMovement.amount}>
+                Registrar
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Lista e Filtros */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Histórico de Movimentações</CardTitle>
-            <CardDescription>
-              {movements.length} movimentação(ões) encontrada(s)
-            </CardDescription>
+            <CardTitle>Histórico</CardTitle>
+            <CardDescription>{movements.length} movimentação(ões)</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Filtros */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-muted rounded-lg">
-              <div className="flex-1">
-                <Label htmlFor="filter-client" className="text-sm">Cliente</Label>
-                <select 
-                  id="filter-client"
-                  value={filters.client_id} 
-                  onChange={(e) => setFilters({ ...filters, client_id: e.target.value })}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">Todos clientes</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id.toString()}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex-1">
-                <Label htmlFor="filter-type" className="text-sm">Tipo</Label>
-                <select 
-                  id="filter-type"
-                  value={filters.type} 
-                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">Todos tipos</option>
-                  <option value="deposit">Entradas</option>
-                  <option value="withdrawal">Saídas</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2 flex-1">
-                <div className="flex-1">
-                  <Label htmlFor="start-date" className="text-sm">Data Início</Label>
-                  <Input
-                    type="date"
-                    value={filters.start_date}
-                    onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label htmlFor="end-date" className="text-sm">Data Fim</Label>
-                  <Input
-                    type="date"
-                    value={filters.end_date}
-                    onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
-                  />
-                </div>
-              </div>
+            <div className="flex gap-4 mb-6 p-4 bg-muted rounded-lg">
+              <select
+                value={filters.client_id}
+                onChange={(e) => setFilters({ ...filters, client_id: e.target.value })}
+                className="flex-1 p-2 border rounded-md"
+              >
+                <option value="">Todos clientes</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                className="flex-1 p-2 border rounded-md"
+              >
+                <option value="">Todos tipos</option>
+                <option value="deposit">Entradas</option>
+                <option value="withdrawal">Saídas</option>
+              </select>
             </div>
-
-            {/* Tabela */}
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {movements.length === 0 ? (
                   <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor (R$)</TableHead>
-                    <TableHead>Observação</TableHead>
+                    <TableCell colSpan={4} className="text-center py-8">
+                      Nenhuma movimentação
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        Nenhuma movimentação encontrada
+                ) : (
+                  movements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>{new Date(movement.date).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell>{movement.client_name}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          movement.type === 'deposit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {movement.type === 'deposit' ? 'Entrada' : 'Saída'}
+                        </span>
+                      </TableCell>
+                      <TableCell className={`font-semibold ${
+                        movement.type === 'deposit' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        R$ {movement.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    movements.map((movement) => (
-                      <TableRow key={movement.id}>
-                        <TableCell className="font-medium">
-                          {formatDate(movement.date)}
-                        </TableCell>
-                        <TableCell>{movement.client_name}</TableCell>
-                        <TableCell>
-                          <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            movement.type === 'deposit' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {movement.type === 'deposit' ? 'Entrada' : 'Saída'}
-                          </div>
-                        </TableCell>
-                        <TableCell className={`text-right font-semibold ${
-                          movement.type === 'deposit' ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          R$ {movement.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate">
-                          {movement.note || '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

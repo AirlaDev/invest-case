@@ -28,6 +28,11 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+# ADICIONE ESTA ROTA
+@app.get("/api/health")
+async def api_health_check():
+    return {"status": "api-healthy"}
+
 # Rota para listar todas as rotas disponíveis
 @app.get("/routes")
 async def list_routes():

@@ -1,5 +1,6 @@
-// Versão simplificada sem process.env
-const API_BASE_URL = 'http://localhost:8000';
+// As chamadas agora usarão caminhos relativos, ex: /api/clients
+
+// As chamadas agora usarão caminhos relativos (ex: /api/clients) para usar o proxy do Next.js
 
 class ApiService {
   private getToken(): string | null {
@@ -20,7 +21,8 @@ class ApiService {
     };
 
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+      // CORREÇÃO: A chamada agora é relativa, sem o endereço completo.
+      const response = await fetch(endpoint, config);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -127,7 +129,8 @@ class ApiService {
 
   // Auth
   async login(credentials: { email: string; password: string }) {
-    return this.request('/api/auth/login', {
+    // CORREÇÃO: Endpoint de login estava incorreto
+    return this.request('/api/token', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });

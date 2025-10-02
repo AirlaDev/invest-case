@@ -69,7 +69,7 @@ export default function AssetsPage() {
   const fetchAssets = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/assets', {
+      const response = await fetch('/api/assets/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,7 +89,7 @@ export default function AssetsPage() {
   const fetchClients = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/clients', {
+      const response = await fetch('/api/clients/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -107,7 +107,7 @@ export default function AssetsPage() {
   const fetchClientAllocations = async (clientId: number) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/assets/clients/${clientId}/allocations`, {
+      const response = await fetch(`/api/assets/clients/${clientId}/allocations/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -125,7 +125,7 @@ export default function AssetsPage() {
   const fetchAllAllocations = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/assets/allocations', {
+      const response = await fetch('/api/assets/allocations/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -146,7 +146,7 @@ export default function AssetsPage() {
     try {
       setIsSearching(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/assets/search/${searchTicker}`, {
+      const response = await fetch(`/api/assets/search/${searchTicker}/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -174,7 +174,7 @@ export default function AssetsPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/assets/allocations', {
+      const response = await fetch('/api/assets/allocations/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,19 +238,18 @@ export default function AssetsPage() {
               <div className="space-y-2">
                 <Label htmlFor="client">Cliente *</Label>
                 <select 
-                  id="client"
-                  value={newAllocation.client_id} 
-                  onChange={(e) => setNewAllocation({ ...newAllocation, client_id: e.target.value })}
-                  className="w-full p-2 border rounded-md"
-                  required
-                >
-                  <option value="">Selecione o cliente</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id.toString()}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
+  value={newAllocation.client_id} 
+  onChange={(e) => setNewAllocation({ ...newAllocation, client_id: e.target.value })}
+  className="w-full p-2 border rounded-md"
+  required
+>
+  <option value="">Selecione o cliente</option>
+  {clients.map((client) => (
+    <option key={client.id} value={client.id}>
+      {client.name}
+    </option>
+  ))}
+</select>
               </div>
 
               <div className="space-y-2">

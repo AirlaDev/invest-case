@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -24,6 +23,8 @@ interface ClientListResponse {
   page: number;
   pages: number;
 }
+
+const API_BASE_URL = 'http://localhost:8000';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -55,7 +56,7 @@ export default function ClientsPage() {
         ...(statusFilter !== 'all' && { is_active: statusFilter === 'active' ? 'true' : 'false' })
       });
 
-      const response = await fetch(`/api/clients?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -66,6 +67,10 @@ export default function ClientsPage() {
         setClients(data.clients);
         setTotalPages(data.pages);
         setTotalClients(data.total);
+      } else {
+        const error = await response.text();
+        console.error('Erro na resposta:', error);
+        alert('Erro ao carregar clientes');
       }
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
@@ -79,7 +84,7 @@ export default function ClientsPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/clients', {
+      const response = await fetch(`${API_BASE_URL}/api/clients/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,18 +111,24 @@ export default function ClientsPage() {
   const handleStatusChange = async (clientId: number, isActive: boolean) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/clients/${clientId}`, {
+      const client = clients.find(c => c.id === clientId);
+      if (!client) return;
+
+      const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ...clients.find(c => c.id === clientId), is_active: isActive }),
+        body: JSON.stringify({ ...client, is_active: isActive }),
       });
 
       if (response.ok) {
         fetchClients();
         alert('Status do cliente atualizado com sucesso!');
+      } else {
+        const error = await response.json();
+        alert(error.detail || 'Erro ao atualizar cliente');
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
@@ -130,7 +141,7 @@ export default function ClientsPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/clients/${clientId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -140,6 +151,9 @@ export default function ClientsPage() {
       if (response.ok) {
         fetchClients();
         alert('Cliente excluído com sucesso!');
+      } else {
+        const error = await response.json();
+        alert(error.detail || 'Erro ao excluir cliente');
       }
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
@@ -200,17 +214,19 @@ export default function ClientsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="active">Ativos</SelectItem>
-                  <SelectItem value="inactive">Inativos</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="text-sm text-muted-foreground">
+              
+              {/* SELECT NATIVO HTML */}
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+              </select>
+              
+              <div className="text-sm text-muted-foreground flex items-center">
                 {totalClients} cliente(s) no total
               </div>
             </div>
