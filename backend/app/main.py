@@ -1,29 +1,40 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
-from app.routes import auth, clients, assets, movements
 
-Base.metadata.create_all(bind=engine)
+from app.routes import clients, assets, movements, auth
 
-app = FastAPI(title="InvestFlow API", version="1.0.0")
+app = FastAPI(title="InvestCase API", version="1.0.0")
 
+# Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(clients.router, prefix="/api/clients", tags=["clients"])
-app.include_router(assets.router, prefix="/api/assets", tags=["assets"])
-app.include_router(movements.router, prefix="/api/movements", tags=["movements"])
+# Incluir rotas
+app.include_router(auth.router, prefix="/api")
+app.include_router(clients.router, prefix="/api")
+app.include_router(assets.router, prefix="/api")
+app.include_router(movements.router, prefix="/api")
 
 @app.get("/")
-def read_root():
-    return {"message": "InvestFlow API is running!"}
+async def root():
+    return {"message": "InvestCase API está rodando!"}
 
 @app.get("/health")
-def health_check():
+async def health_check():
     return {"status": "healthy"}
+
+# Rota para listar todas as rotas disponíveis
+@app.get("/routes")
+async def list_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "methods": list(route.methods) if hasattr(route, 'methods') else []
+        })
+    return routes
